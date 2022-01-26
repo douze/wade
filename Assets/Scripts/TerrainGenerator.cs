@@ -18,10 +18,13 @@ public class TerrainGenerator : MonoBehaviour
     public GameObject inputNode;
     public GameObject outputNode;
     private List<GameObject> inputTiles;
+    private float tileSize = 0.0f;
 
     public void Initialize()
     {
         inputTiles = Flatten(inputNode);
+        if (inputTiles.Count == 0) throw new Exception("Input Node unassigned");
+        ValidateTileSize();
     }
 
     /// <summary>Remove all GameObject instances from the <c>outputNode</c>.</summary>
@@ -45,12 +48,27 @@ public class TerrainGenerator : MonoBehaviour
         return flattenTiles;
     }
 
+    /// <summary> Validate all the tile size by comparing the bound x and z.</summary>
+    private void ValidateTileSize()
+    {
+        if (inputTiles.Count == 0) return;
+
+        float epsilon = 0.00001f;
+        Bounds referenceBounds = inputTiles[0].GetComponent<MeshFilter>().sharedMesh.bounds;
+        foreach(GameObject inputTile in inputTiles)
+        {
+            Bounds bounds = inputTile.GetComponent<MeshFilter>().sharedMesh.bounds;
+            if (Mathf.Abs(bounds.size.x - bounds.size.z) > epsilon || Mathf.Abs(bounds.size.x - referenceBounds.size.x) > epsilon) {
+                throw new Exception("Invalid tile size for " + inputTile.name + " (" + bounds.size + " VS ref " + referenceBounds.size + " -- " + Mathf.Epsilon + ")");
+            } 
+        }
+        tileSize = referenceBounds.size.x;
+    }
+
     /// <summary> Generate a square grid using random tiles.</summary>
     /// <remarks> For testing purpose only. </remarks>
     public void GenerateRandomGrid()
     {
-        int tileSize = 2;
-
         for (int j = 0; j < height; j++)
         {
             for (int i = 0; i < width; i++)
@@ -102,7 +120,7 @@ public class TerrainGenerator : MonoBehaviour
             for (var x = 0; x < width; x++)
             {
                 GameObject newTile = GameObject.Instantiate(outputres.Get(x, z).Value as GameObject, outputNode.transform);
-                newTile.transform.position = new Vector3(x * 2, 0, height - z * 2); // Reverse z axis as DeBroglie doesn't use the same as Unity
+                newTile.transform.position = new Vector3(x * tileSize, 0, height - z * tileSize); // Reverse z axis as DeBroglie doesn't use the same as Unity
                 while (newTile.transform.childCount > 0)
                 {
                     DestroyImmediate(newTile.transform.GetChild(0).gameObject);
@@ -125,7 +143,6 @@ public class TerrainGenerator_Inspector : Editor
         {
             terrainGenerator.Initialize();
             terrainGenerator.CleanOuput();
-            //terrainGenerator.GenerateRandomGrid();
             terrainGenerator.GenerateWFCGrid();
         }
     }
