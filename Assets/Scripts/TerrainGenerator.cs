@@ -8,7 +8,6 @@ using System;
 using System.Linq;
 
 /// <summary>Generate a terrain using WFC.</summary>
-
 public class TerrainGenerator : MonoBehaviour
 {
 
@@ -30,10 +29,7 @@ public class TerrainGenerator : MonoBehaviour
     /// <summary>Remove all GameObject instances from the <c>outputNode</c>.</summary>
     public void CleanOuput()
     {
-        while (outputNode.transform.childCount > 0)
-        {
-            DestroyImmediate(outputNode.transform.GetChild(0).gameObject);
-        }
+       outputNode.transform.DestroyImmediateAllChildren();
     }
 
     /// <summary> Flatten the <c>inputNode</c> GameObject (arranged by mesh) to a single list of GameObject.</summary>
@@ -111,15 +107,15 @@ public class TerrainGenerator : MonoBehaviour
 
         TilePropagator propagator = new TilePropagator(model, topology, new TilePropagatorOptions { BackTrackDepth = -1 });
 
-        var status = propagator.Run();
+        DeBroglie.Resolution status = propagator.Run();
         if (status != DeBroglie.Resolution.Decided) throw new Exception("Undecided");
 
-        var outputres = propagator.ToArray();
-        for (var z = 0; z < height; z++)
+        ITopoArray<Tile> result = propagator.ToArray();
+        for (int z = 0; z < height; z++)
         {
-            for (var x = 0; x < width; x++)
+            for (int x = 0; x < width; x++)
             {
-                GameObject newTile = GameObject.Instantiate(outputres.Get(x, z).Value as GameObject, outputNode.transform);
+                GameObject newTile = GameObject.Instantiate(result.Get(x, z).Value as GameObject, outputNode.transform);
                 newTile.transform.position = new Vector3(x * tileSize, 0, height - z * tileSize); // Reverse z axis as DeBroglie doesn't use the same as Unity
                 while (newTile.transform.childCount > 0)
                 {
