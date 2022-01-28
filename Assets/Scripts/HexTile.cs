@@ -2,14 +2,18 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
-/// <summary>Representes a tile with a square shape.</summary>
-public class SquareTile : Tile
+public class HexTile : Tile
 {
-    
-    public EdgeType top;
-    public EdgeType right;
-    public EdgeType bottom;
-    public EdgeType left;
+    //    / \  5 6
+    //    | |  4 1
+    //    \ /  3 2
+
+    public EdgeType one;
+    public EdgeType two;
+    public EdgeType three;
+    public EdgeType four;
+    public EdgeType five;
+    public EdgeType six;
 
     /// <summary>Generate variations of the current tile: new position, rotation and edges.</summary>
     public void GenerateVariation(int variations)
@@ -23,17 +27,19 @@ public class SquareTile : Tile
             newPosition.z -= i * (GetComponent<MeshFilter>().sharedMesh.bounds.size.z + 1);
             // Rotate
             Quaternion newRotation = transform.rotation;
-            newRotation *= Quaternion.Euler(0, i*90, 0);
+            newRotation *= Quaternion.Euler(0, i*60, 0);
             GameObject child = GameObject.Instantiate(gameObject, newPosition, newRotation);
             // Swap edges
-            SquareTile tile = child.GetComponent<SquareTile>();
+            HexTile tile = child.GetComponent<HexTile>();
             for (int j = 0 ; j < i ; j++)
             {
-                EdgeType saveRight = tile.right;
-                tile.right = tile.top;
-                tile.top = tile.left;
-                tile.left = tile.bottom;
-                tile.bottom = saveRight;                
+                EdgeType saveOne = tile.one;
+                tile.one = tile.six;
+                tile.six = tile.five;
+                tile.five = tile.four;
+                tile.four = tile.three; 
+                tile.three = tile.two;
+                tile.two = saveOne;               
             }
             children.Add(child);
         }
@@ -45,29 +51,43 @@ public class SquareTile : Tile
 
 }
 
-[CustomEditor(typeof(SquareTile))]
-public class SquareTile_Inspector : Editor
+
+[CustomEditor(typeof(HexTile))]
+public class HexTile_Inspector : Editor
 {
     public override void OnInspectorGUI()
     {
         DrawDefaultInspector();
 
-        SquareTile squareTile = (SquareTile)target;
+        HexTile hexTile = (HexTile)target;
 
         GUILayout.BeginHorizontal("box");
         GUILayout.Label("Variations");
         if (GUILayout.Button("1"))
         {
-            squareTile.GenerateVariation(0);
+            hexTile.GenerateVariation(0);
         }
         if (GUILayout.Button("2"))
         {
-            squareTile.GenerateVariation(1);
+            hexTile.GenerateVariation(1);
+        }
+        if (GUILayout.Button("3"))
+        {
+            hexTile.GenerateVariation(2);
         }
         if (GUILayout.Button("4"))
         {
-            squareTile.GenerateVariation(3);
+            hexTile.GenerateVariation(3);
+        }
+        if (GUILayout.Button("5"))
+        {
+            hexTile.GenerateVariation(4);
+        }
+        if (GUILayout.Button("6"))
+        {
+            hexTile.GenerateVariation(5);
         }
         GUILayout.EndHorizontal();
     }
 }
+
