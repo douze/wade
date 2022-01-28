@@ -49,13 +49,13 @@ public class TerrainGenerator : MonoBehaviour
     {
         if (inputTiles.Count == 0) return;
 
-        float epsilon = 0.00001f;
+        float epsilon = 0.01f;
         Bounds referenceBounds = inputTiles[0].GetComponent<MeshFilter>().sharedMesh.bounds;
         foreach(GameObject inputTile in inputTiles)
         {
             Bounds bounds = inputTile.GetComponent<MeshFilter>().sharedMesh.bounds;
             if (Mathf.Abs(bounds.size.x - bounds.size.z) > epsilon || Mathf.Abs(bounds.size.x - referenceBounds.size.x) > epsilon) {
-                throw new Exception("Invalid tile size for " + inputTile.name + " (" + bounds.size + " VS ref " + referenceBounds.size + " -- " + Mathf.Epsilon + ")");
+                throw new Exception("Invalid tile size for " + inputTile.name + " (" + bounds.size + " VS ref " + referenceBounds.size + " -- " + epsilon + ")");
             } 
         }
         tileSize = referenceBounds.size.x;
@@ -71,11 +71,7 @@ public class TerrainGenerator : MonoBehaviour
             {
                 GameObject tile = GameObject.Instantiate(inputTiles[UnityEngine.Random.Range(0, inputTiles.Count)], outputNode.transform);
                 tile.transform.position = new Vector3(i * tileSize, 0, j * tileSize);
-
-                while (tile.transform.childCount > 0)
-                {
-                    DestroyImmediate(tile.transform.GetChild(0).gameObject);
-                }
+                tile.transform.DestroyImmediateAllChildren();
             }
         }
     }
@@ -115,12 +111,12 @@ public class TerrainGenerator : MonoBehaviour
         {
             for (int x = 0; x < width; x++)
             {
-                GameObject newTile = GameObject.Instantiate(result.Get(x, z).Value as GameObject, outputNode.transform);
-                newTile.transform.position = new Vector3(x * tileSize, 0, height - z * tileSize); // Reverse z axis as DeBroglie doesn't use the same as Unity
-                while (newTile.transform.childCount > 0)
-                {
-                    DestroyImmediate(newTile.transform.GetChild(0).gameObject);
-                }
+                GameObject source = result.Get(x, z).Value as GameObject;
+                // Reverse z axis as DeBroglie doesn't use the same as Unity
+                Vector3 newPosition = new Vector3(x * tileSize, 0, height - z * tileSize); 
+                GameObject newTile = GameObject.Instantiate(source, newPosition, source.transform.rotation);
+                newTile.transform.SetParent(outputNode.transform, false);
+                newTile.transform.DestroyImmediateAllChildren();
             }
         }
     }
