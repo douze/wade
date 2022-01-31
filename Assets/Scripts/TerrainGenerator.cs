@@ -167,7 +167,7 @@ public class TerrainGenerator : MonoBehaviour
             {
                 GameObject source = result.Get(x, z).Value as GameObject;
                 // Reverse z axis as DeBroglie doesn't use the same as Unity
-                Vector3 newPosition = new Vector3(x * tileSize - offset, 0, height - z * tileSize * 0.875f);
+                Vector3 newPosition = new Vector3(x * tileSize - offset, 0, height - z * tileSize * 0.867f);
                 GameObject newTile = GameObject.Instantiate(source, newPosition, source.transform.rotation);
                 newTile.transform.SetParent(outputNode.transform, false);
                 newTile.transform.DestroyImmediateAllChildren();

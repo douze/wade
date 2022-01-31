@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEditor;
 
 public class HexTile : Tile
 {
@@ -15,79 +13,28 @@ public class HexTile : Tile
     public EdgeType five;
     public EdgeType six;
 
-    /// <summary>Generate variations of the current tile: new position, rotation and edges.</summary>
-    public void GenerateVariation(int variations)
+    public HexTile()
     {
-        transform.DestroyImmediateAllChildren();
-        List<GameObject> children = new List<GameObject>();
-        for (int i = 1 ; i <= variations ; i++)
-        {
-            // Offset position
-            Vector3 newPosition = transform.position;
-            newPosition.z -= i * (GetComponent<MeshFilter>().sharedMesh.bounds.size.z + 1);
-            // Rotate
-            Quaternion newRotation = transform.rotation;
-            newRotation *= Quaternion.Euler(0, i*60, 0);
-            GameObject child = GameObject.Instantiate(gameObject, newPosition, newRotation);
-            // Swap edges
-            HexTile tile = child.GetComponent<HexTile>();
-            for (int j = 0 ; j < i ; j++)
-            {
-                EdgeType saveOne = tile.one;
-                tile.one = tile.six;
-                tile.six = tile.five;
-                tile.five = tile.four;
-                tile.four = tile.three; 
-                tile.three = tile.two;
-                tile.two = saveOne;               
-            }
-            children.Add(child);
-        }
-        foreach(GameObject child in children)
-        {
-            child.transform.SetParent(transform);
-        }
+        maxNumberOfVariations = 6;
     }
 
-}
-
-
-[CustomEditor(typeof(HexTile))]
-public class HexTile_Inspector : Editor
-{
-    public override void OnInspectorGUI()
+    protected override Quaternion GetRotation(int variation)
     {
-        DrawDefaultInspector();
+        return Quaternion.Euler(0, variation * 60, 0);
+    }
 
-        HexTile hexTile = (HexTile)target;
-
-        GUILayout.BeginHorizontal("box");
-        GUILayout.Label("Variations");
-        if (GUILayout.Button("1"))
+    protected override void SwapEdges(GameObject child, int variation)
+    {
+        HexTile tile = child.GetComponent<HexTile>();
+        for (int i = 0 ; i < variation ; i++)
         {
-            hexTile.GenerateVariation(0);
+            EdgeType saveOne = tile.one;
+            tile.one = tile.six;
+            tile.six = tile.five;
+            tile.five = tile.four;
+            tile.four = tile.three; 
+            tile.three = tile.two;
+            tile.two = saveOne;               
         }
-        if (GUILayout.Button("2"))
-        {
-            hexTile.GenerateVariation(1);
-        }
-        if (GUILayout.Button("3"))
-        {
-            hexTile.GenerateVariation(2);
-        }
-        if (GUILayout.Button("4"))
-        {
-            hexTile.GenerateVariation(3);
-        }
-        if (GUILayout.Button("5"))
-        {
-            hexTile.GenerateVariation(4);
-        }
-        if (GUILayout.Button("6"))
-        {
-            hexTile.GenerateVariation(5);
-        }
-        GUILayout.EndHorizontal();
     }
 }
-
