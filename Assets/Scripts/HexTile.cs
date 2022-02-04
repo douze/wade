@@ -6,6 +6,7 @@ public class HexTile : Tile
     //    | |  4 1
     //    \ /  3 2
 
+    [Header("Edges")]
     public EdgeType one;
     public EdgeType two;
     public EdgeType three;

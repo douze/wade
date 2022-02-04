@@ -4,6 +4,7 @@ using UnityEngine;
 public class SquareTile : Tile
 {
 
+    [Header("Edges")]
     public EdgeType top;
     public EdgeType right;
     public EdgeType bottom;

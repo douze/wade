@@ -1,6 +1,9 @@
 using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
+using System;
+using UnityEditor.UIElements;
+using UnityEngine.UIElements;
 
 public abstract class Tile : MonoBehaviour
 {
@@ -11,6 +14,11 @@ public abstract class Tile : MonoBehaviour
     }
 
     protected int maxNumberOfVariations;
+
+    [Header("Constraints")]
+    public bool mainPath;
+    public PointConstraint entryPoint;
+    public PointConstraint exitPoint;
 
     public int GetMaxNumberOfVariations()
     {
@@ -49,17 +57,49 @@ public abstract class Tile : MonoBehaviour
 
 }
 
+[Serializable]
+public class PointConstraint
+{
+    public bool active;
+    public Vector2Int position;
+}
+
+[CustomPropertyDrawer(typeof(PointConstraint))]
+public class PointConstraint_Property : PropertyDrawer
+{
+    
+    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+    {
+        label = EditorGUI.BeginProperty(position, label, property);
+        position = EditorGUI.PrefixLabel(position, label);
+
+        position.width *= 0.1f;
+        SerializedProperty activeProperty = property.FindPropertyRelative("active");
+        EditorGUI.PropertyField(position, activeProperty, GUIContent.none);
+
+        GUI.enabled = activeProperty.boolValue;
+        position.x += position.width;
+        position.width *= 9f;
+        EditorGUI.PropertyField(position, property.FindPropertyRelative("position"), GUIContent.none);
+
+        EditorGUI.EndProperty();
+    }
+}
+
 [CustomEditor(typeof(Tile), true)]
 public class Tile_Inspector : Editor
 {
+
     public override void OnInspectorGUI()
     {
         DrawDefaultInspector();
 
         Tile tile = (Tile)target;
 
-        GUILayout.BeginHorizontal("box");
-        GUILayout.Label("Variations");
+        EditorGUILayout.LabelField("ProcGen", EditorStyles.boldLabel);
+
+        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.PrefixLabel("Variations");
         for (int i = 0; i < tile.GetMaxNumberOfVariations(); i++)
         {
             if (GUILayout.Button(i.ToString()))
@@ -67,6 +107,6 @@ public class Tile_Inspector : Editor
                 tile.GenerateVariation(i);
             }
         }
-        GUILayout.EndHorizontal();
+        EditorGUILayout.EndHorizontal();
     }
 }

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using DeBroglie;
+using DeBroglie.Constraints;
 using DeBroglie.Topo;
 using DeBroglie.Models;
 using System;
@@ -19,6 +20,10 @@ public class TerrainGenerator : MonoBehaviour
     public GameObject outputNode;
     private List<GameObject> inputTiles;
     private float tileSize = 0.0f;
+
+    public Material redMaterial;
+    public Material greenMaterial;
+    public Material blueMaterial;
 
     public void Initialize()
     {
@@ -57,7 +62,7 @@ public class TerrainGenerator : MonoBehaviour
             Bounds bounds = inputTile.GetComponent<MeshFilter>().sharedMesh.bounds;
             if (Mathf.Abs(bounds.size.x - bounds.size.z) > epsilon || Mathf.Abs(bounds.size.x - referenceBounds.size.x) > epsilon)
             {
-               throw new Exception("Invalid tile size for " + inputTile.name + " (" + bounds.size + " VS ref " + referenceBounds.size + " -- " + epsilon + ")");
+                throw new Exception("Invalid tile size for " + inputTile.name + " (" + bounds.size + " VS ref " + referenceBounds.size + " -- " + epsilon + ")");
             }
         }
         tileSize = referenceBounds.size.x;
@@ -103,10 +108,58 @@ public class TerrainGenerator : MonoBehaviour
 
         model.SetUniformFrequency();
 
-        TilePropagator propagator = new TilePropagator(model, topology, new TilePropagatorOptions { BackTrackDepth = -1 });
+        // Constraints : main path
+        DeBroglie.Tile[] mainPathTiles = inputTiles
+            .FindAll(currentTile => currentTile.GetComponent<SquareTile>().mainPath)
+            .Select(currentTile => new DeBroglie.Tile(currentTile))
+            .ToArray();
+
+        inputTiles.ForEach(inputTile => inputTile.GetComponent<Renderer>().sharedMaterials[0] = greenMaterial);
+
+        Dictionary<DeBroglie.Tile, ISet<Direction>> exits = new Dictionary<DeBroglie.Tile, ISet<Direction>>();
+        foreach (DeBroglie.Tile mainPathTile in mainPathTiles)
+        {
+            ISet<Direction> directions = new HashSet<Direction>();
+            SquareTile squareTile = (mainPathTile.Value as GameObject).GetComponent<SquareTile>();
+            squareTile.GetComponent<Renderer>().sharedMaterials[0] = redMaterial;
+            if (squareTile.top == Tile.EdgeType.Path) directions.Add(Direction.YMinus);
+            if (squareTile.bottom == Tile.EdgeType.Path) directions.Add(Direction.YPlus);
+            if (squareTile.left == Tile.EdgeType.Path) directions.Add(Direction.XMinus);
+            if (squareTile.right == Tile.EdgeType.Path) directions.Add(Direction.XPlus);
+            exits.Add(mainPathTile, directions);
+        }
+
+        EdgedPathConstraint pathConstraint = new EdgedPathConstraint(exits);
+
+        // Constraints : fixed tiles
+        List<GameObject> entryPointTiles = inputTiles
+            .FindAll(currentTile => currentTile.GetComponent<SquareTile>().entryPoint.active);
+        List<GameObject> exitPointTiles = inputTiles
+            .FindAll(currentTile => currentTile.GetComponent<SquareTile>().exitPoint.active);
+
+        FixedTileConstraint entryFixedTileConstraint = new FixedTileConstraint
+        {
+            Tiles = entryPointTiles.Select(currentTile => new DeBroglie.Tile(currentTile)).ToArray(),
+            Point = new Point(entryPointTiles[0].GetComponent<SquareTile>().entryPoint.position.x, entryPointTiles[0].GetComponent<SquareTile>().entryPoint.position.y)
+        };
+
+        FixedTileConstraint exitFixedTileConstraint = new FixedTileConstraint
+        {
+            Tiles = exitPointTiles.Select(currentTile => new DeBroglie.Tile(currentTile)).ToArray(),
+            Point = new Point(exitPointTiles[0].GetComponent<SquareTile>().exitPoint.position.x, exitPointTiles[0].GetComponent<SquareTile>().exitPoint.position.y)
+        };
+
+        // Frequencies
+        model.SetFrequency(new DeBroglie.Tile(inputTiles[0]), 2.0);
+
+        TilePropagator propagator = new TilePropagator(model, topology, new TilePropagatorOptions
+        {
+            BackTrackDepth = 12,
+            Constraints = new ITileConstraint[] { pathConstraint, entryFixedTileConstraint, exitFixedTileConstraint }
+        });
 
         DeBroglie.Resolution status = propagator.Run();
-        if (status != DeBroglie.Resolution.Decided) throw new Exception("Undecided");
+        if (status != DeBroglie.Resolution.Decided) throw new Exception(status.ToString());
 
         ITopoArray<DeBroglie.Tile> result = propagator.ToArray();
         for (int z = 0; z < height; z++)
@@ -119,11 +172,35 @@ public class TerrainGenerator : MonoBehaviour
                 GameObject newTile = GameObject.Instantiate(source, newPosition, source.transform.rotation);
                 newTile.transform.SetParent(outputNode.transform, false);
                 newTile.transform.DestroyImmediateAllChildren();
+                //
+                if (source.GetComponent<SquareTile>().mainPath)
+                {
+                    var rend = newTile.GetComponent<Renderer>();
+                    if (rend != null)
+                    {
+                        rend.sharedMaterials[0] = redMaterial;
+                        rend.sharedMaterial = redMaterial;
+                    }
+                }
+                if ((source.GetComponent<SquareTile>().entryPoint.active &&
+                    source.GetComponent<SquareTile>().entryPoint.position.x == x &&
+                    source.GetComponent<SquareTile>().entryPoint.position.y == z) ||
+                    (source.GetComponent<SquareTile>().exitPoint.active &&
+                    source.GetComponent<SquareTile>().exitPoint.position.x == x &&
+                    source.GetComponent<SquareTile>().exitPoint.position.y == z))
+                {
+                    var rend = newTile.GetComponent<Renderer>();
+                    if (rend != null)
+                    {
+                        rend.sharedMaterials[0] = blueMaterial;
+                        rend.sharedMaterial = blueMaterial;
+                    }
+                }
             }
         }
     }
 
-    /// <summary> Generate a square grid using WFC algorithm and hex tiles.</summary>
+    /// <summary> Generate a rombus grid using WFC algorithm and hex tiles.</summary>
     public void GenerateWFCGridWithHex()
     {
         AdjacentModel model = new AdjacentModel(DirectionSet.Hexagonal2d);
@@ -181,6 +258,7 @@ public class TerrainGenerator : MonoBehaviour
 [CustomEditor(typeof(TerrainGenerator))]
 public class TerrainGenerator_Inspector : Editor
 {
+
     public override void OnInspectorGUI()
     {
         DrawDefaultInspector();
