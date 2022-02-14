@@ -2,8 +2,7 @@ using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
 using System;
-using UnityEditor.UIElements;
-using UnityEngine.UIElements;
+using System.Linq;
 
 public abstract class Tile : MonoBehaviour
 {
@@ -19,6 +18,11 @@ public abstract class Tile : MonoBehaviour
     public bool mainPath;
     public PointConstraint entryPoint;
     public PointConstraint exitPoint;
+
+    //[HideInInspector]
+    public Vector2Int position;
+
+    private int originalMaterialIndex;
 
     public int GetMaxNumberOfVariations()
     {
@@ -55,6 +59,72 @@ public abstract class Tile : MonoBehaviour
         }
     }
 
+    private int ReplaceMaterial(Material originalMaterial, Material newMaterial)
+    {
+        Renderer renderer = GetComponent<Renderer>();
+        int materialIndex = ArrayUtility.IndexOf<Material>(renderer.sharedMaterials, originalMaterial);
+        if (materialIndex != -1)
+        {
+            ReplaceMaterial(materialIndex, newMaterial);
+        }
+        return materialIndex;
+    }
+
+    private void ReplaceMaterial(int originalMaterialIndex, Material newMaterial)
+    {
+        if (originalMaterialIndex == -1) return;
+
+        Renderer renderer = GetComponent<Renderer>();
+        Material[] materials = renderer.sharedMaterials;
+        materials[originalMaterialIndex] = newMaterial;
+        renderer.sharedMaterials = materials;
+    }
+
+    public void UseDebugMaterial(Material originalMaterialToReplace, Material pathMaterial, Material fixedTileMaterial)
+    {
+        if (entryPoint.active || exitPoint.active)
+        {
+            originalMaterialIndex = ReplaceMaterial(originalMaterialToReplace, fixedTileMaterial);
+        }
+        else if (mainPath)
+        {
+            originalMaterialIndex = ReplaceMaterial(originalMaterialToReplace, pathMaterial);
+        }
+    }
+
+    public void UseDebugMaterial(Material originalMaterialToReplace, Material pathMaterial, Material fixedTileMaterial, Vector2Int? position)
+    {
+        if ((entryPoint.active && entryPoint.position.x == position.Value.x && entryPoint.position.y == position.Value.y) ||
+                (exitPoint.active && exitPoint.position.x == position.Value.x && exitPoint.position.y == position.Value.y))
+        {
+            originalMaterialIndex = ReplaceMaterial(originalMaterialToReplace, fixedTileMaterial);
+        }
+        else if (mainPath)
+        {
+            originalMaterialIndex = ReplaceMaterial(originalMaterialToReplace, pathMaterial);
+        }
+    }
+
+    public void UseDebugMaterial(Material pathMaterial, Material fixedTileMaterial, Vector2Int? position)
+    {
+        if ((entryPoint.active && entryPoint.position.x == position.Value.x && entryPoint.position.y == position.Value.y) ||
+                (exitPoint.active && exitPoint.position.x == position.Value.x && exitPoint.position.y == position.Value.y))
+        {
+            ReplaceMaterial(originalMaterialIndex, fixedTileMaterial);
+        }
+        else if (mainPath)
+        {
+            ReplaceMaterial(originalMaterialIndex, pathMaterial);
+        }
+    }
+
+    public void UseNormalMaterial(Material originalMaterial)
+    {
+        ReplaceMaterial(originalMaterialIndex, originalMaterial);
+    }
+
+
+
 }
 
 [Serializable]
@@ -67,7 +137,7 @@ public class PointConstraint
 [CustomPropertyDrawer(typeof(PointConstraint))]
 public class PointConstraint_Property : PropertyDrawer
 {
-    
+
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
     {
         label = EditorGUI.BeginProperty(position, label, property);

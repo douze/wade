@@ -9,27 +9,48 @@ using System;
 using System.Linq;
 
 /// <summary>Generate a terrain using WFC.</summary>
+[ExecuteInEditMode]
 public class TerrainGenerator : MonoBehaviour
 {
 
+    [Header("Characteristics")]
     public int width;
     public int height;
     public bool hex = false;
 
+    [Header("Nodes")]
     public GameObject inputNode;
     public GameObject outputNode;
     private List<GameObject> inputTiles;
     private float tileSize = 0.0f;
+    private List<GameObject> outputTiles;
 
-    public Material redMaterial;
-    public Material greenMaterial;
-    public Material blueMaterial;
+    [Header("Debug")]
+    public bool debugMode = true;
+    public Material originalMaterialToReplace;
+    public Material pathTileMaterial;
+    public Material fixedTilePaterial;
 
     public void Initialize()
     {
         inputTiles = Flatten(inputNode);
         if (inputTiles.Count == 0) throw new Exception("Input Node unassigned");
         ValidateTileSize();
+        outputTiles = new List<GameObject>();
+    }
+
+    public void OnValidate()
+    {
+        if (debugMode)
+        {
+            inputTiles.ForEach(tile => tile.GetComponent<Tile>().UseDebugMaterial(originalMaterialToReplace, pathTileMaterial, fixedTilePaterial));
+            outputTiles.ForEach(tile => tile.GetComponent<Tile>().UseDebugMaterial(originalMaterialToReplace, pathTileMaterial, fixedTilePaterial, tile.GetComponent<Tile>().position));
+        }
+        else
+        {
+            inputTiles.ForEach(tile => tile.GetComponent<Tile>().UseNormalMaterial(originalMaterialToReplace));
+            outputTiles.ForEach(tile => tile.GetComponent<Tile>().UseNormalMaterial(originalMaterialToReplace));
+        }
     }
 
     /// <summary>Remove all GameObject instances from the <c>outputNode</c>.</summary>
@@ -114,14 +135,11 @@ public class TerrainGenerator : MonoBehaviour
             .Select(currentTile => new DeBroglie.Tile(currentTile))
             .ToArray();
 
-        inputTiles.ForEach(inputTile => inputTile.GetComponent<Renderer>().sharedMaterials[0] = greenMaterial);
-
         Dictionary<DeBroglie.Tile, ISet<Direction>> exits = new Dictionary<DeBroglie.Tile, ISet<Direction>>();
         foreach (DeBroglie.Tile mainPathTile in mainPathTiles)
         {
             ISet<Direction> directions = new HashSet<Direction>();
             SquareTile squareTile = (mainPathTile.Value as GameObject).GetComponent<SquareTile>();
-            squareTile.GetComponent<Renderer>().sharedMaterials[0] = redMaterial;
             if (squareTile.top == Tile.EdgeType.Path) directions.Add(Direction.YMinus);
             if (squareTile.bottom == Tile.EdgeType.Path) directions.Add(Direction.YPlus);
             if (squareTile.left == Tile.EdgeType.Path) directions.Add(Direction.XMinus);
@@ -172,29 +190,15 @@ public class TerrainGenerator : MonoBehaviour
                 GameObject newTile = GameObject.Instantiate(source, newPosition, source.transform.rotation);
                 newTile.transform.SetParent(outputNode.transform, false);
                 newTile.transform.DestroyImmediateAllChildren();
-                //
-                if (source.GetComponent<SquareTile>().mainPath)
+                newTile.GetComponent<Tile>().position = new Vector2Int(x, z);
+                outputTiles.Add(newTile);
+                if (debugMode)
                 {
-                    var rend = newTile.GetComponent<Renderer>();
-                    if (rend != null)
-                    {
-                        rend.sharedMaterials[0] = redMaterial;
-                        rend.sharedMaterial = redMaterial;
-                    }
+                    newTile.GetComponent<Tile>().UseDebugMaterial(pathTileMaterial, fixedTilePaterial, newTile.GetComponent<Tile>().position);
                 }
-                if ((source.GetComponent<SquareTile>().entryPoint.active &&
-                    source.GetComponent<SquareTile>().entryPoint.position.x == x &&
-                    source.GetComponent<SquareTile>().entryPoint.position.y == z) ||
-                    (source.GetComponent<SquareTile>().exitPoint.active &&
-                    source.GetComponent<SquareTile>().exitPoint.position.x == x &&
-                    source.GetComponent<SquareTile>().exitPoint.position.y == z))
+                else
                 {
-                    var rend = newTile.GetComponent<Renderer>();
-                    if (rend != null)
-                    {
-                        rend.sharedMaterials[0] = blueMaterial;
-                        rend.sharedMaterial = blueMaterial;
-                    }
+                    newTile.GetComponent<Tile>().UseNormalMaterial(originalMaterialToReplace);
                 }
             }
         }
