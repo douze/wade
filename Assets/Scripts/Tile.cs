@@ -2,8 +2,8 @@ using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
 using System;
-using System.Linq;
 
+[ExecuteInEditMode]
 public abstract class Tile : MonoBehaviour
 {
     public enum EdgeType
@@ -18,15 +18,22 @@ public abstract class Tile : MonoBehaviour
     public bool mainPath;
     public PointConstraint entryPoint;
     public PointConstraint exitPoint;
+    public float frequency = 1.0f;
 
-    //[HideInInspector]
+    [HideInInspector]
     public Vector2Int position;
 
     private int originalMaterialIndex;
+    private Renderer tileRenderer;
 
     public int GetMaxNumberOfVariations()
     {
         return maxNumberOfVariations;
+    }
+
+    public void Awake()
+    {
+        tileRenderer = GetComponent<Renderer>();
     }
 
     /// <summary>Return the rotation for the current <c>variation</c>.</summary>
@@ -59,68 +66,23 @@ public abstract class Tile : MonoBehaviour
         }
     }
 
-    private int ReplaceMaterial(Material originalMaterial, Material newMaterial)
+    public void UseDebugMaterial(Material originalMaterialToReplace, Material pathMaterial, Material fixedTileMaterial, Vector2Int position)
     {
-        Renderer renderer = GetComponent<Renderer>();
-        int materialIndex = ArrayUtility.IndexOf<Material>(renderer.sharedMaterials, originalMaterial);
-        if (materialIndex != -1)
+        bool isEntryPoint = entryPoint.active && entryPoint.position.x == position.x && entryPoint.position.y == position.y;
+        bool isExitPoint = exitPoint.active && exitPoint.position.x == position.x && exitPoint.position.y == position.y;
+        if (isEntryPoint || isExitPoint)
         {
-            ReplaceMaterial(materialIndex, newMaterial);
-        }
-        return materialIndex;
-    }
-
-    private void ReplaceMaterial(int originalMaterialIndex, Material newMaterial)
-    {
-        if (originalMaterialIndex == -1) return;
-
-        Renderer renderer = GetComponent<Renderer>();
-        Material[] materials = renderer.sharedMaterials;
-        materials[originalMaterialIndex] = newMaterial;
-        renderer.sharedMaterials = materials;
-    }
-
-    public void UseDebugMaterial(Material originalMaterialToReplace, Material pathMaterial, Material fixedTileMaterial)
-    {
-        if (entryPoint.active || exitPoint.active)
-        {
-            originalMaterialIndex = ReplaceMaterial(originalMaterialToReplace, fixedTileMaterial);
+            originalMaterialIndex = tileRenderer.ReplaceSharedMaterial(originalMaterialToReplace, fixedTileMaterial);
         }
         else if (mainPath)
         {
-            originalMaterialIndex = ReplaceMaterial(originalMaterialToReplace, pathMaterial);
-        }
-    }
-
-    public void UseDebugMaterial(Material originalMaterialToReplace, Material pathMaterial, Material fixedTileMaterial, Vector2Int? position)
-    {
-        if ((entryPoint.active && entryPoint.position.x == position.Value.x && entryPoint.position.y == position.Value.y) ||
-                (exitPoint.active && exitPoint.position.x == position.Value.x && exitPoint.position.y == position.Value.y))
-        {
-            originalMaterialIndex = ReplaceMaterial(originalMaterialToReplace, fixedTileMaterial);
-        }
-        else if (mainPath)
-        {
-            originalMaterialIndex = ReplaceMaterial(originalMaterialToReplace, pathMaterial);
-        }
-    }
-
-    public void UseDebugMaterial(Material pathMaterial, Material fixedTileMaterial, Vector2Int? position)
-    {
-        if ((entryPoint.active && entryPoint.position.x == position.Value.x && entryPoint.position.y == position.Value.y) ||
-                (exitPoint.active && exitPoint.position.x == position.Value.x && exitPoint.position.y == position.Value.y))
-        {
-            ReplaceMaterial(originalMaterialIndex, fixedTileMaterial);
-        }
-        else if (mainPath)
-        {
-            ReplaceMaterial(originalMaterialIndex, pathMaterial);
+            originalMaterialIndex = tileRenderer.ReplaceSharedMaterial(originalMaterialToReplace, pathMaterial);
         }
     }
 
     public void UseNormalMaterial(Material originalMaterial)
     {
-        ReplaceMaterial(originalMaterialIndex, originalMaterial);
+        tileRenderer.UseSharedMaterialOnIndex(originalMaterialIndex, originalMaterial);
     }
 
 
