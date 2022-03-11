@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEditor;
+using System.Collections.Generic;
 
 public static class ExtensionMethods
 {
@@ -33,5 +34,25 @@ public static class ExtensionMethods
         materials[originalMaterialIndex] = newMaterial;
         renderer.sharedMaterials = materials;
     }
-  
+
+    /// <summary>Return the extent of the bounding box of the <c>gameObject</c>.</summary>
+    public static Vector3 GetBoundingBoxExtent(this GameObject gameObject)
+    {
+        MeshFilter meshFilter = gameObject.GetComponent<MeshFilter>();
+        if (meshFilter == null) return Vector3.zero;
+
+        return meshFilter.sharedMesh.bounds.extents;
+    }
+
+    /// <summary>Return all the children of the <c>gameObject</c>.</summary>
+    public static List<GameObject> GetAllChildren(this GameObject gameObject)
+    {
+        List<GameObject> list = new List<GameObject>();
+        for (int i = 0; i < gameObject.transform.childCount; i++)
+        {
+            list.Add(gameObject.transform.GetChild(i).gameObject);
+        }
+        return list;
+    }
+
 }

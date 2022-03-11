@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System;
 
+/// <summary>A <c>Tile</c> is... a tile.</summary>
 [ExecuteInEditMode]
 public abstract class Tile : MonoBehaviour
 {
@@ -19,6 +20,10 @@ public abstract class Tile : MonoBehaviour
     public PointConstraint entryPoint;
     public PointConstraint exitPoint;
     public float frequency = 1.0f;
+
+    [Header("Props")]
+    public bool trees = false;
+    public int maxPropsWeight = 5;
 
     [HideInInspector]
     public Vector2Int position;
@@ -66,6 +71,7 @@ public abstract class Tile : MonoBehaviour
         }
     }
 
+    /// <summary>Use the <c>pathMaterial</c> or <c>fixedTileMaterial</c> (depending on the <c>position</c>) instead of the <c>originalMaterialToReplace</c>.</summary>
     public void UseDebugMaterial(Material originalMaterialToReplace, Material pathMaterial, Material fixedTileMaterial, Vector2Int position)
     {
         bool isEntryPoint = entryPoint.active && entryPoint.position.x == position.x && entryPoint.position.y == position.y;
@@ -80,12 +86,11 @@ public abstract class Tile : MonoBehaviour
         }
     }
 
+    /// <summary>Revert to the <c>originalMaterial</c>.</summary>
     public void UseNormalMaterial(Material originalMaterial)
     {
         tileRenderer.UseSharedMaterialOnIndex(originalMaterialIndex, originalMaterial);
     }
-
-
 
 }
 

@@ -1,5 +1,6 @@
 using UnityEngine;
 
+/// <summary>Represents a tile with a square shape.</summary>
 public class HexTile : Tile
 {
     //    / \  5 6

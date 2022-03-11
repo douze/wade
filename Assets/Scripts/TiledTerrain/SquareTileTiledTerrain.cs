@@ -7,53 +7,20 @@ using DeBroglie.Models;
 using System.Linq;
 using System;
 
-public class TiledTerrain : MonoBehaviour
+public class SquareTileTiledTerrain : TiledTerrain
 {
 
-    private int width;
-    private int height;
-    private float tileSize;
-
-    private List<GameObject> inputTiles;
-    private List<GameObject> outputTiles;
-
-    private AdjacentModel model;
-    private GridTopology topology;
-
-    /// <summary> Initialize the terrain from <c>inputTiles</c>.</summary>
-    public void Initialize(List<GameObject> inputTiles, int width, int height)
+    public override void Initialize(List<GameObject> inputTiles, int width, int height)
     {
-        this.inputTiles = inputTiles;
-        this.width = width;
-        this.height = height;
+        base.Initialize(inputTiles, width, height);
+        model = new AdjacentModel(DirectionSet.Cartesian2d);
         topology = new GridTopology(width, height, false);
-        tileSize = ValidateTileSize();
-        transform.DestroyImmediateAllChildren();
     }
 
-    /// <summary> Validate all the tile size by comparing the bound x and z.</summary>
-    private float ValidateTileSize()
-    {
-        if (inputTiles.Count == 0) return 0.0f;
-
-        float epsilon = 0.5f;
-        Bounds referenceBounds = inputTiles[0].GetComponent<MeshFilter>().sharedMesh.bounds;
-        foreach (GameObject inputTile in inputTiles)
-        {
-            Bounds bounds = inputTile.GetComponent<MeshFilter>().sharedMesh.bounds;
-            if (Mathf.Abs(bounds.size.x - bounds.size.z) > epsilon || Mathf.Abs(bounds.size.x - referenceBounds.size.x) > epsilon)
-            {
-                throw new Exception("Invalid tile size for " + inputTile.name + " (" + bounds.size + " VS ref " + referenceBounds.size + " -- " + epsilon + ")");
-            }
-        }
-        return referenceBounds.size.x;
-    }
-
-    private void ComputeAdjacencies()
+    protected override void ComputeAdjacencies()
     {
         foreach (GameObject inputTile in inputTiles)
         {
-            // Find opposite matchings
             DeBroglie.Tile[] matchingRight = inputTiles
                 .FindAll(currentTile => inputTile.GetComponent<SquareTile>().right == currentTile.GetComponent<SquareTile>().left)
                 .Select(currentTile => new DeBroglie.Tile(currentTile))
@@ -69,6 +36,7 @@ public class TiledTerrain : MonoBehaviour
         }
     }
 
+    /// <summary> Compute the path constraints, using tiles marked as <c>mainPath</c>.</summary>
     private EdgedPathConstraint ComputePathConstraint()
     {
         DeBroglie.Tile[] mainPathTiles = inputTiles
@@ -92,6 +60,7 @@ public class TiledTerrain : MonoBehaviour
         return new EdgedPathConstraint(exits);
     }
 
+    /// <summary> Compute the fixed tile constraints, using tiles marked as <c>entrePoint</c> and <c>exitPoint</c>.</summary>
     private FixedTileConstraint[] ComputeFixedTileConstraint()
     {
         List<GameObject> entryPointTiles = inputTiles
@@ -116,35 +85,15 @@ public class TiledTerrain : MonoBehaviour
         return new FixedTileConstraint[] { entryFixedTileConstraint, exitFixedTileConstraint };
     }
 
-    public void ComputeFrequencies()
+    protected override ITileConstraint[] BuildConstraints()
     {
-        foreach (GameObject inputTile in inputTiles)
-        {
-            model.SetFrequency(new DeBroglie.Tile(inputTile), inputTile.GetComponent<Tile>().frequency);
-        }
-    }
-
-    /// <summary> Generate a square grid using WFC algorithm and square tiles.</summary>
-    public void GenerateWFCGrid(bool debugMode = false)
-    {
-        model = new AdjacentModel(DirectionSet.Cartesian2d);
-        outputTiles.Clear();
-
-        ComputeAdjacencies();
         EdgedPathConstraint pathConstraint = ComputePathConstraint();
         FixedTileConstraint[] fixedTileConstraints = ComputeFixedTileConstraint();
-        ComputeFrequencies();
+        return new ITileConstraint[] { pathConstraint, fixedTileConstraints[0], fixedTileConstraints[1] };
+    }
 
-        TilePropagator propagator = new TilePropagator(model, topology, new TilePropagatorOptions
-        {
-            BackTrackDepth = 12,
-            Constraints = new ITileConstraint[] { pathConstraint, fixedTileConstraints[0], fixedTileConstraints[1] }
-        });
-
-        DeBroglie.Resolution status = propagator.Run();
-        if (status != DeBroglie.Resolution.Decided) throw new Exception(status.ToString());
-
-        ITopoArray<DeBroglie.Tile> result = propagator.ToArray();
+    protected override void PlaceTiles(ITopoArray<DeBroglie.Tile> result)
+    {
         for (int z = 0; z < height; z++)
         {
             for (int x = 0; x < width; x++)
@@ -154,20 +103,12 @@ public class TiledTerrain : MonoBehaviour
                 Vector3 newPosition = new Vector3(x * tileSize, 0, height - z * tileSize);
                 GameObject newTile = GameObject.Instantiate(source, newPosition, source.transform.rotation);
                 newTile.transform.SetParent(transform, false);
-                newTile.transform.DestroyImmediateAllChildren();
+                if (newTile.transform.childCount > 0 && newTile.transform.GetChild(0).GetComponent<Tile>() != null) newTile.transform.DestroyImmediateAllChildren();
                 newTile.GetComponent<Tile>().position = new Vector2Int(x, z);
                 outputTiles.Add(newTile);
-             }
+                PlaceProps(newTile.GetComponent<Tile>());
+            }
         }
     }
 
-    public void UseDebugMaterial(Material originalMaterialToReplace, Material pathMaterial, Material fixedTileMaterial)
-    {
-       outputTiles.ForEach(tile => tile.GetComponent<Tile>().UseDebugMaterial(originalMaterialToReplace, pathMaterial, fixedTileMaterial, tile.GetComponent<Tile>().position));
-    }
-
-    public void UseNormalMaterial(Material originalMaterial)
-    {
-        outputTiles.ForEach(tile => tile.GetComponent<Tile>().UseNormalMaterial(originalMaterial));
-    }
 }
