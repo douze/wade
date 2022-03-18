@@ -60,36 +60,25 @@ public class SquareTileTiledTerrain : TiledTerrain
         return new EdgedPathConstraint(exits);
     }
 
-    /// <summary> Compute the fixed tile constraints, using tiles marked as <c>entrePoint</c> and <c>exitPoint</c>.</summary>
-    private FixedTileConstraint[] ComputeFixedTileConstraint()
+    /// <summary> Compute the fixed tile constraints, using tiles with <c>fixedPoints</c> active</c>.</summary>
+    private List<ITileConstraint> ComputeFixedTileConstraint()
     {
-        List<GameObject> entryPointTiles = inputTiles
-            .FindAll(currentTile => currentTile.GetComponent<SquareTile>().entryPoint.active);
-        List<GameObject> exitPointTiles = inputTiles
-            .FindAll(currentTile => currentTile.GetComponent<SquareTile>().exitPoint.active);
-
-        FixedTileConstraint entryFixedTileConstraint = new FixedTileConstraint
-        {
-            Tiles = entryPointTiles.Select(currentTile => new DeBroglie.Tile(currentTile)).ToArray(),
-            // FIXME
-            Point = new Point(entryPointTiles[0].GetComponent<SquareTile>().entryPoint.position.x, entryPointTiles[0].GetComponent<SquareTile>().entryPoint.position.y)
-        };
-
-        FixedTileConstraint exitFixedTileConstraint = new FixedTileConstraint
-        {
-            Tiles = exitPointTiles.Select(currentTile => new DeBroglie.Tile(currentTile)).ToArray(),
-            // FIXME
-            Point = new Point(exitPointTiles[0].GetComponent<SquareTile>().exitPoint.position.x, exitPointTiles[0].GetComponent<SquareTile>().exitPoint.position.y)
-        };
-
-        return new FixedTileConstraint[] { entryFixedTileConstraint, exitFixedTileConstraint };
+        return inputTiles
+            .FindAll(currentTile => currentTile.GetComponent<Tile>().fixedPoints.Count > 0)
+            .SelectMany(currentTile => currentTile.GetComponent<Tile>().fixedPoints.Select(currentFixedPoint => 
+                new FixedTileConstraint
+                {
+                    Tiles = new DeBroglie.Tile[] { new DeBroglie.Tile(currentTile) },
+                    Point = new Point(currentFixedPoint.position.x, currentFixedPoint.position.y)
+                }))
+            .ToList<ITileConstraint>();
     }
 
     protected override ITileConstraint[] BuildConstraints()
     {
-        EdgedPathConstraint pathConstraint = ComputePathConstraint();
-        FixedTileConstraint[] fixedTileConstraints = ComputeFixedTileConstraint();
-        return new ITileConstraint[] { pathConstraint, fixedTileConstraints[0], fixedTileConstraints[1] };
+        List<ITileConstraint> constraints = ComputeFixedTileConstraint();
+        constraints.Add(ComputePathConstraint());
+        return constraints.ToArray();
     }
 
     protected override void PlaceTiles(ITopoArray<DeBroglie.Tile> result)

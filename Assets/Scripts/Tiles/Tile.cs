@@ -2,6 +2,7 @@ using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
 using System;
+using System.Linq;
 
 /// <summary>A <c>Tile</c> is... a tile.</summary>
 [ExecuteInEditMode]
@@ -17,8 +18,7 @@ public abstract class Tile : MonoBehaviour
 
     [Header("Constraints")]
     public bool mainPath;
-    public PointConstraint entryPoint;
-    public PointConstraint exitPoint;
+    public List<PointConstraint> fixedPoints;
     public float frequency = 1.0f;
 
     [Header("Props")]
@@ -74,9 +74,7 @@ public abstract class Tile : MonoBehaviour
     /// <summary>Use the <c>pathMaterial</c> or <c>fixedTileMaterial</c> (depending on the <c>position</c>) instead of the <c>originalMaterialToReplace</c>.</summary>
     public void UseDebugMaterial(Material originalMaterialToReplace, Material pathMaterial, Material fixedTileMaterial, Vector2Int position)
     {
-        bool isEntryPoint = entryPoint.active && entryPoint.position.x == position.x && entryPoint.position.y == position.y;
-        bool isExitPoint = exitPoint.active && exitPoint.position.x == position.x && exitPoint.position.y == position.y;
-        if (isEntryPoint || isExitPoint)
+        if (fixedPoints.Any(fixedPoint => fixedPoint.active && fixedPoint.position == position))
         {
             originalMaterialIndex = tileRenderer.ReplaceSharedMaterial(originalMaterialToReplace, fixedTileMaterial);
         }
