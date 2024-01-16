@@ -3,7 +3,7 @@
 ![Unity](https://img.shields.io/badge/-Unity-grey?logo=Unity)
 ![license](https://img.shields.io/github/license/douze/wade?color=blue&label=license)
 ![languages](https://img.shields.io/github/languages/top/douze/wade?color=brightgreen)
-
+![status](https://img.shields.io/badge/status-inative-yellowgreen)
 
 **Wa**ve-function-collapse **de**mo is a Unity project for generating terrain using tiles and constraints with [BorisTheBrave/DeBroglie](https://github.com/BorisTheBrave/DeBroglie) library.
 
