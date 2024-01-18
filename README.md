@@ -9,11 +9,11 @@
 
 This project is mainly used to discover (again) Unity, C# and NuGet.
 
-![Preview](images/wade.png)
+![Preview](wade.png)
 
 ## Features
 
-![Features](images/wade.gif)
+![Features](wade.gif)
 
 ## Tools
 * [Unity Engine](https://unity.com/) 2020.3.24f1
